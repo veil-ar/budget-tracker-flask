@@ -49,11 +49,7 @@ def login():
             flash('Login failed. Check email and password.', 'danger')
     return render_template('login.html')
 
-@app.route('/dashboard')
-@login_required
-def dashboard():
-    return f"Welcome {current_user.username}! This is your dashboard."
-  
+
 @app.route('/dashboard', methods=['GET', 'POST'])
 @login_required
 def dashboard():
@@ -66,6 +62,15 @@ def dashboard():
         db.session.commit()
         flash('Transaction added!', 'success')
         return redirect(url_for('dashboard'))
+
+    transactions = Transaction.query.filter_by(user_id=current_user.id).order_by(Transaction.date.desc()).all()
+    total_income = sum(t.amount for t in transactions if t.type == 'income')
+    total_expense = sum(t.amount for t in transactions if t.type == 'expense')
+    balance = total_income - total_expense
+    return render_template('dashboard.html', transactions=transactions, total_income=total_income, total_expense=total_expense, balance=balance)
+    
+
+
 
     transactions = Transaction.query.filter_by(user_id=current_user.id).order_by(Transaction.date.desc()).all()
     total_income = sum(t.amount for t in transactions if t.type == 'income')
