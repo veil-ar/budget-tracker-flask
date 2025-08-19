@@ -49,6 +49,24 @@ def login():
             flash('Login failed. Check email and password.', 'danger')
     return render_template('login.html')
 
+@app.route('/edit/<int:transaction_id>', methods=['GET', 'POST'])
+@login_required
+def edit_transaction(transaction_id):
+    transaction = Transaction.query.get_or_404(transaction_id)
+    if transaction.user_id != current_user.id:
+        flash("You cannot edit someone else's transaction.", "danger")
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        transaction.amount = float(request.form.get('amount'))
+        transaction.category = request.form.get('category')
+        transaction.type = request.form.get('type')
+        db.session.commit()
+        flash("Transaction updated!", "success")
+        return redirect(url_for('dashboard'))
+
+    return render_template('edit_transaction.html', transaction=transaction)
+
 
 @app.route('/dashboard', methods=['GET', 'POST'])
 @login_required
@@ -77,6 +95,18 @@ def dashboard():
     total_expense = sum(t.amount for t in transactions if t.type == 'expense')
     balance = total_income - total_expense
     return render_template('dashboard.html', transactions=transactions, total_income=total_income, total_expense=total_expense, balance=balance)
+
+@app.route('/delete/<int:transaction_id>')
+@login_required
+def delete_transaction(transaction_id):
+    transaction = Transaction.query.get_or_404(transaction_id)
+    if transaction.user_id != current_user.id:
+        flash("You cannot delete someone else's transaction.", "danger")
+        return redirect(url_for('dashboard'))
+    db.session.delete(transaction)
+    db.session.commit()
+    flash("Transaction deleted!", "success")
+    return redirect(url_for('dashboard'))
 
 
 @app.route('/logout')
