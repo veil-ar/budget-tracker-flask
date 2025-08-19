@@ -2,7 +2,7 @@ from flask import Flask, render_template, redirect, url_for, request, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
-from models import db, User
+from models import db, User, Transaction
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'supersecretkey'  # change this later
@@ -53,6 +53,26 @@ def login():
 @login_required
 def dashboard():
     return f"Welcome {current_user.username}! This is your dashboard."
+  
+@app.route('/dashboard', methods=['GET', 'POST'])
+@login_required
+def dashboard():
+    if request.method == 'POST':
+        amount = float(request.form.get('amount'))
+        category = request.form.get('category')
+        t_type = request.form.get('type')  # 'income' or 'expense'
+        new_transaction = Transaction(amount=amount, category=category, type=t_type, user_id=current_user.id)
+        db.session.add(new_transaction)
+        db.session.commit()
+        flash('Transaction added!', 'success')
+        return redirect(url_for('dashboard'))
+
+    transactions = Transaction.query.filter_by(user_id=current_user.id).order_by(Transaction.date.desc()).all()
+    total_income = sum(t.amount for t in transactions if t.type == 'income')
+    total_expense = sum(t.amount for t in transactions if t.type == 'expense')
+    balance = total_income - total_expense
+    return render_template('dashboard.html', transactions=transactions, total_income=total_income, total_expense=total_expense, balance=balance)
+
 
 @app.route('/logout')
 @login_required
